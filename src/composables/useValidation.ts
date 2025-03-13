@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch } from 'vue';
+import {reactive, computed, watch, nextTick} from 'vue';
 import type { ValidationSchema, ValidationComposable, ValidationErrors, TouchedFields } from '@/types/validation.types.js'
 
 export function useValidation<T extends Record<string, any>>(
@@ -11,48 +11,40 @@ export function useValidation<T extends Record<string, any>>(
     const touched = reactive<TouchedFields>({});
     const isValid = computed(() => Object.values(errors).every((e) => e.length === 0));
 
-    const defaultMessages = {
-        required: 'Это поле обязательно',
-        minLength: (val: number) => `Минимальная длина ${val} символов`,
-        maxLength: (val: number) => `Максимальная длина ${val} символов`,
-        email: 'Введите корректный email'
-    };
+    let debounceTimer: ReturnType<typeof setTimeout>;
 
-    const validators = {
-        required: (value: any, rule: { message?: string }) => !value ? (rule.message || defaultMessages.required) : null,
-        minLength: (value: string, rule: { value: number; message?: string }) =>
-            value.length < rule.value ? (rule.message || defaultMessages.minLength(rule.value)) : null,
-        maxLength: (value: string, rule: { value: number; message?: string }) =>
-            value.length > rule.value ? (rule.message || defaultMessages.maxLength(rule.value)) : null,
-        email: (value: string, rule: { message?: string }) =>
-            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? (rule.message || defaultMessages.email) : null,
-        customRule: (value: any, rule: { validator: (val: any) => string | null }) => rule.validator(value)
-    };
-
-    const validateField = (field: keyof T, value: any) => {
+    const validateField = async (field: keyof T, value: any) => {
         errors[field] = [];
         const fieldRules = rules[field] || {};
 
         Object.keys(fieldRules).forEach((ruleKey) => {
-            const rule = fieldRules[ruleKey];
-            if (validators[ruleKey]) {
-                const errorMessage = validators[ruleKey](value, rule);
-                if (errorMessage) errors[field].push(errorMessage);
+            const rule = fieldRules[ruleKey]
+
+            if (typeof rule.validator === 'function' && !rule.validator(value)) {
+                if (rule.messageError) {
+                    if (!errors[field]) errors[field] = [];
+                    errors[field].push(rule.messageError);
+                }
             }
         });
+
+        await nextTick();
     };
 
     const validateForm = () => {
-        Object.keys(values).forEach((field) => validateField(field, values[field]));
+        Object.keys(values).forEach((field) => markTouched(field as keyof typeof values));
     };
 
-    const markTouched = (field: keyof T) => {
+    const markTouched = async (field: keyof T) => {
         touched[field] = true;
-        validateField(field, values[field]);
+        await validateField(field, values[field]);
     };
 
     const resetForm = () => {
-        Object.assign(values, initialValues);
+        clearTimeout(debounceTimer);
+        Object.keys(values).forEach((key) => {
+            values[key] = initialValues[key];
+        });
         Object.keys(errors).forEach((key) => (errors[key] = []));
         Object.keys(touched).forEach((key) => (touched[key] = false));
     };
@@ -61,7 +53,8 @@ export function useValidation<T extends Record<string, any>>(
     watch(
         values,
         () => {
-            setTimeout(validateForm, debounceTime);
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(markTouched, debounceTime);
         },
         { deep: true }
     );

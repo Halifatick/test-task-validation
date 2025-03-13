@@ -1,30 +1,58 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import { useValidation } from '@/composables/useValidation';
+import type { ValidationSchema } from "@/types/validation.types.ts";
 
 const successMessage = ref('');
-const { values, errors, touched, validateForm, resetForm, markTouched } = useValidation(
-    { name: '', email: '', password: '' },
-    {
-      name: {
-        required: { message: 'Введите имя' },
-        minLength: { value: 3, message: 'Имя слишком короткое' },
-        customRule: {
-          validator: (value) => (value.includes('admin') ? 'Нельзя использовать "admin" в имени' : null)
-        }
-      },
-      email: { required: true, email: { message: 'Email указан неверно' } },
-      password: { required: true, minLength: { value: 6 } }
-    }
-);
 
-const handleSubmit = () => {
-  Object.keys(values).forEach(field => markTouched(field));
-  validateForm();
-  if (Object.values(errors).every(field => field.length === 0)) {
-    successMessage.value = 'Форма успешно отправлена!';
-    setTimeout(() => (successMessage.value = ''), 3000);
+const initialValues = {
+  name: '',
+  email: '',
+  password: ''
+};
+
+const validationRules: ValidationSchema = {
+  name: {
+    required: {
+      messageError: 'Имя обязательно',
+      validator: (value: string) => Boolean(value)
+    },
+    minLength: {
+      messageError: 'Минимальная длина имени 3 символа',
+      validator: (value: string) => value.length >= 3
+    }
+  },
+  email: {
+    required: {
+      messageError: 'Email обязателен',
+      validator: (value: string) => Boolean(value)
+    },
+    email: {
+      messageError: 'Некорректный формат email',
+      validator: (value: string) => /\S+@\S+\.\S+/.test(value)
+    }
+  },
+  password: {
+    required: {
+      messageError: 'Пароль обязателен',
+      validator: (value: string) => Boolean(value)
+    },
+    minLength: {
+      messageError: 'Минимальная длина пароля 6 символов',
+      validator: (value: string) => value.length >= 6
+    }
   }
+};
+
+const { values, errors, touched, validateForm, resetForm, markTouched, isValid } = useValidation(initialValues, validationRules);
+
+const handleSubmit = (): void => {
+  validateForm();
+
+  if (!isValid.value) return;
+
+  successMessage.value = 'Форма успешно отправлена!';
+  setTimeout(() => (successMessage.value = ''), 3000);
 };
 </script>
 
@@ -35,7 +63,7 @@ const handleSubmit = () => {
     <form @submit.prevent="handleSubmit" class="form-container">
       <div class="form-group">
         <label for="name">Имя:</label>
-        <input id="name" v-model="values.name" @blur="markTouched('name')" type="text"
+        <input id="name" v-model.trim="values.name" @blur="markTouched('name')" type="text"
                :class="{ 'input-error': touched.name && errors.name.length }"
                :aria-invalid="touched.name && errors.name.length ? 'true' : 'false'"
                aria-describedby="error-name" autocomplete="name" />
@@ -46,7 +74,7 @@ const handleSubmit = () => {
 
       <div class="form-group">
         <label for="email">Email:</label>
-        <input id="email" v-model="values.email" @blur="markTouched('email')" type="email"
+        <input id="email" v-model.trim="values.email" @blur="markTouched('email')" type="email"
                :class="{ 'input-error': touched.email && errors.email.length }"
                :aria-invalid="touched.email && errors.email.length ? 'true' : 'false'"
                aria-describedby="error-email" autocomplete="email" />
