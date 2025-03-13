@@ -8,7 +8,7 @@ import Sitemap from 'vite-plugin-sitemap'
 const additionalScssImports = `@use '@/styles/base/_variables.scss' as *;`
 
 const config: UserConfigExport = defineConfig(({ mode }: ConfigEnv) => ({
-  base: process.env.VITE_BASE_URL || '/',
+  base: 'test-task-validation',
   envDir: './env',
   plugins: [
     vue(),
@@ -31,7 +31,7 @@ const config: UserConfigExport = defineConfig(({ mode }: ConfigEnv) => ({
       include: /\.(html|css|js|json|svg)$/,
       exclude: /\.(map|woff2?|ttf|eot|png|jpg|jpeg|webp|gif)$/,
     }),
-    Sitemap({ hostname: process.env.VITE_SITEMAP_HOSTNAME || 'http://localhost:3000' }),
+    Sitemap({ hostname: 'https://halifatick.github.io/test-task-validation' }),
   ],
   resolve: {
     alias: {
