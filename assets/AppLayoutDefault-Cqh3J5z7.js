@@ -1,0 +1,1 @@
+import{d as t,p as a,o,q as s,b as n}from"./vue-BSk5-Dw9.js";const c={class:"flex flex-auto"},r={class:"container mx-auto"},d=t({__name:"AppLayoutDefault",setup(l){return(e,_)=>(o(),a("main",c,[s("div",r,[n(e.$slots,"default")])]))}});export{d as default};
